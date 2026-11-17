@@ -249,6 +249,7 @@ function runGameFrame(now) {
 function stageScreenshot(mode) {
   // Freeze simulation and sun, so every screenshot is a reproducible render of real game objects.
   document.body.classList.add('shot-mode');
+  minimapCanvas.width = 300; minimapCanvas.height = 225;
   game.time = 42; game.renderTime = 23.4; game.mode = 'playing'; game.cash = 12450;
   game.stats.missions = 3; game.stats.topWanted = 4; game.stats.carsStolen = 6; game.stats.shotsFired = 28; game.stats.playTime = 746;
   mission.index = 3; mission.stage = 4; mission.active = true;
@@ -259,6 +260,10 @@ function stageScreenshot(mode) {
   wanted.level = 3; wanted.seen = true; wanted.lastCrime = game.time; wanted.top = 4;
   const pursuitA = spawnCar('Patrol', 820, 1424, -.08, 'police'); pursuitA.speed = 220;
   const pursuitB = spawnCar('Patrol', 1000, 1260, Math.PI / 2 + .13, 'police'); pursuitB.speed = 190;
+  if (mode === 'hero') {
+    camera.x = hero.x; camera.y = hero.y - 64; camera.zoom = 1.2;
+    pursuitB.x = hero.x + 180; pursuitB.y = hero.y; pursuitB.angle = Math.PI + .08;
+  }
   spawnCar('Vulture', 1190, 1376, Math.PI, 'traffic'); spawnCar('Brine', 980, 1540, -Math.PI / 2, 'traffic');
   for (let i = 0; i < 18; i++) pedestrians.push({ x: 650 + (i % 9) * 74, y: i < 9 ? 1337 : 1462, angle: i % 2 ? 0 : Math.PI, health: 60, flee: i % 4 === 0 ? 4 : 0, hitFlash: 0, color: ['#f5dfb1', '#55b5aa', '#ec7958', '#a79cd1'][i % 4], pace: 25, phase: i });
   for (let i = 0; i < 45; i++) skidMarks.push({ x1: 775 + i * 5, y1: 1431 + Math.sin(i * .09) * 12, x2: 780 + i * 5, y2: 1431 + Math.sin((i + 1) * .09) * 12, life: 18 });

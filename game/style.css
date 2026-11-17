@@ -23,5 +23,8 @@
 .complete-card .lead{margin-top:14px;margin-bottom:16px}
 .complete-card .card-note{margin-bottom:10px}
 .shot-mode .bar i{transition:none}
+.shot-mode .radar{width:302px}
+.shot-mode #minimap{width:300px;height:225px}
+.shot-mode .objective-panel{right:362px}
 @media(max-height:650px){.title-screen{padding-top:28px}.title-logo{font-size:72px;margin:17px 0}.tagline{font-size:13px;margin-bottom:15px}.title-features{margin-top:17px;gap:6px}.title-controls{margin-top:15px;padding-top:12px;gap:8px}.title-footer{position:static;margin-top:25px}.complete-card{padding:22px 35px}.complete-card .seal{margin-bottom:12px}.complete-card h1{font-size:36px}.stats{margin:18px 0;padding:12px 0}}
 @media(max-width:800px){.title-features{font-size:9px;max-width:390px}.location{padding:8px 10px}.map-shell{inset:12px;padding:12px}.map-top h1{font-size:18px}.map-layout{gap:10px}.map-aside{width:160px;flex-shrink:0}.map-job{font-size:10px}.map-footer{font-size:7px}.title-footer{font-size:7px;letter-spacing:1px}}
