@@ -33,7 +33,11 @@ function startMission() {
   game.mode = 'playing'; overlay.innerHTML = ''; showToast('JOB STARTED · ' + def.name.toUpperCase()); saveGame();
 }
 function currentMissionMarker() {
-  if (game.shot === 'hero') return { x: 2200, y: 1688, label: 'SHINE SHOP' };
+  if (game.shot === 'hero' || game.shot === 'map') {
+    const marker = { x: shineShop.x, y: shineShop.y, label: 'SHINE SHOP' };
+    marker.distance = distance(player, marker) / 10; // 10 world units per metre.
+    return marker;
+  }
   if (!mission.active || mission.index >= 5) return null;
   if (mission.index === 1 && mission.stage === 0) {
     const car = cars.find(c => c.id === mission.targetCarId); if (!car) return null;
@@ -48,7 +52,7 @@ function currentMissionMarker() {
   return { ...point, label: labels[mission.index][mission.stage] };
 }
 function missionObjective() {
-  if (game.shot === 'hero') return 'MISSION 4 — HOT METAL: lose the police, reach the Shine Shop';
+  if (game.shot === 'hero' || game.shot === 'map') return 'MISSION 4 — HOT METAL: lose the police, reach the Shine Shop';
   if (!mission.active) return mission.index >= 5 ? 'The city is yours. Free roam Palmshade.' : 'Mara Voss has a job for you.';
   if (mission.index === 0) return mission.stage === 0 ? 'Pick up the package at Marina Row Dock 07' : 'Deliver the package to South Quay before time runs out';
   if (mission.index === 1) return mission.stage === 0 ? 'Steal the marked Vulture sedan in Sunset Mile' : 'Deliver the Vulture to Old Cannery · keep damage under 50%';
@@ -122,13 +126,19 @@ function failMission(reason) {
 }
 function drawMissionMarker(ctx, time) {
   const marker = currentMissionMarker(); if (!marker) return;
+  const stagedShop = (game.shot === 'hero' || game.shot === 'map') && marker.label === 'SHINE SHOP';
   ctx.save(); ctx.translate(marker.x, marker.y);
   const pulse = Math.sin(time * 3) * 4;
   ctx.strokeStyle = '#ffc852aa'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(0, 0, 35 + pulse, 19 + pulse * .5, 0, 0, Math.PI * 2); ctx.stroke();
   ctx.fillStyle = '#ffcb533d'; ctx.fill();
-  const beam = ctx.createLinearGradient(0, -85, 0, 0); beam.addColorStop(0, '#ffcd5500'); beam.addColorStop(1, '#ffc852aa'); drawRect(ctx, -16, -85, 32, 85, beam);
-  ctx.save(); ctx.translate(0, -43 + pulse); ctx.rotate(Math.PI / 4); ctx.shadowColor = '#ffd05c'; ctx.shadowBlur = 17; drawRect(ctx, -9, -9, 18, 18, '#ffd05c'); drawRect(ctx, -4, -4, 8, 8, '#513c20'); ctx.restore();
-  drawText(ctx, marker.label, 0, -75 + pulse, 10, '#ffeabb', 'center'); ctx.restore();
+  if (!stagedShop) {
+    const beam = ctx.createLinearGradient(0, -85, 0, 0); beam.addColorStop(0, '#ffcd5500'); beam.addColorStop(1, '#ffc852aa'); drawRect(ctx, -16, -85, 32, 85, beam);
+  }
+  // Fit the staged diamond between the shop sign and paint bay; the sign supplies its label.
+  const size = stagedShop ? 7 : 9, inset = stagedShop ? 3 : 4;
+  ctx.save(); ctx.translate(0, stagedShop ? -71 : -43 + pulse); ctx.rotate(Math.PI / 4); ctx.shadowColor = '#ffd05c'; ctx.shadowBlur = stagedShop ? 3 : 17; drawRect(ctx, -size, -size, size * 2, size * 2, '#ffd05c'); drawRect(ctx, -inset, -inset, inset * 2, inset * 2, '#513c20'); ctx.restore();
+  if (!stagedShop) drawText(ctx, marker.label, 0, -75 + pulse, 10, '#ffeabb', 'center');
+  ctx.restore();
 }
 function statsMarkup() {
   return `<div class="stats"><div><small>MISSIONS</small><strong>${game.stats.missions}/5</strong></div><div><small>CASH</small><strong>$${game.cash.toLocaleString()}</strong></div><div><small>TOP WANTED</small><strong class="gold">${'★'.repeat(game.stats.topWanted) || '—'}</strong></div></div>`;

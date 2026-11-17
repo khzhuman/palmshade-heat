@@ -150,7 +150,8 @@ function drawWorldMap() {
     drawMapDiamond(ctx, p, 6, '#ffd15f');
   }
   drawMapPlayer(ctx, mapPosition(player, view), 10);
-  drawText(ctx, 'YOU', player.x * scale, player.y * scale - 17, 10, '#b8ffe4', 'center');
+  const stagedMap = game.shot === 'map';
+  drawText(ctx, 'YOU', player.x * scale + (stagedMap ? 30 : 0), player.y * scale + (stagedMap ? 2 : -17), 10, '#b8ffe4', 'center');
   drawText(ctx, 'N ↑', mapWidth - 20, 22, 13, '#faf1d9', 'right');
   drawText(ctx, 'PALMSHADE BAY', mapWidth - 15, mapHeight - 18, 10, '#b1d8da', 'right');
   ctx.restore();

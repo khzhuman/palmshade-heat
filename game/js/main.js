@@ -248,6 +248,7 @@ function runGameFrame(now) {
 }
 function stageScreenshot(mode) {
   // Freeze simulation and sun, so every screenshot is a reproducible render of real game objects.
+  const shopApproach = mode === 'hero' || mode === 'map';
   document.body.classList.add('shot-mode');
   minimapCanvas.width = 300; minimapCanvas.height = 225;
   game.time = 42; game.renderTime = 23.4; game.mode = 'playing'; game.cash = 12450;
@@ -260,7 +261,7 @@ function stageScreenshot(mode) {
   wanted.level = 3; wanted.seen = true; wanted.lastCrime = game.time; wanted.top = 4;
   const pursuitA = spawnCar('Patrol', 820, 1424, -.08, 'police'); pursuitA.speed = 220;
   const pursuitB = spawnCar('Patrol', 1000, 1260, Math.PI / 2 + .13, 'police'); pursuitB.speed = 190;
-  if (mode === 'hero') {
+  if (shopApproach) {
     // Approach the Shine Shop past a busy crossing, with both patrols following east.
     Object.assign(hero, { x: 2190, y: 1824, angle: 0, body: '#8fdbc2', vx: 238, vy: 0 });
     player.x = hero.x; player.y = hero.y; player.angle = hero.angle;
@@ -270,11 +271,13 @@ function stageScreenshot(mode) {
     }
     const pursuit = [hero, pursuitA, pursuitB];
     cars = cars.filter(car => pursuit.includes(car) || pursuit.every(staged => distance(car, staged) >= 80));
+    const crossingCar = cars.find(car => car.type === 'Manta' && car.x === 2318 && car.y === 1847);
+    if (crossingCar) crossingCar.body = carDefinitions.Vulture.body;
     for (let i = 0; i < 5; i++) pedestrians.push({ x: 2259, y: 1764 + i * 16, angle: Math.PI / 2, health: 60, flee: 0, hitFlash: 0, color: ['#f5dfb1', '#55b5aa', '#ec7958', '#a79cd1'][i % 4], pace: 25, phase: i });
   }
   spawnCar('Vulture', 1190, 1376, Math.PI, 'traffic'); spawnCar('Brine', 980, 1540, -Math.PI / 2, 'traffic');
   for (let i = 0; i < 18; i++) pedestrians.push({ x: 650 + (i % 9) * 74, y: i < 9 ? 1337 : 1462, angle: i % 2 ? 0 : Math.PI, health: 60, flee: i % 4 === 0 ? 4 : 0, hitFlash: 0, color: ['#f5dfb1', '#55b5aa', '#ec7958', '#a79cd1'][i % 4], pace: 25, phase: i });
-  const skidX = mode === 'hero' ? hero.x - 225 : 775, skidY = mode === 'hero' ? hero.y + 7 : 1431;
+  const skidX = shopApproach ? hero.x - 225 : 775, skidY = shopApproach ? hero.y + 7 : 1431;
   for (let i = 0; i < 45; i++) skidMarks.push({ x1: skidX + i * 5, y1: skidY + Math.sin(i * .09) * 12, x2: skidX + 5 + i * 5, y2: skidY + Math.sin((i + 1) * .09) * 12, life: 18 });
   if (mode === 'foot') {
     cars = cars.filter(c => c.ai !== 'police' && c !== hero); clearWanted();
