@@ -1,13 +1,24 @@
 'use strict';
+// Populate sidewalks and streets with moving citizens, traffic and replenishing supplies.
 let pedestrians = [], supplyCrates = [];
 function spawnPedestrians() {
   pedestrians = [];
   for (let i = 0; i < 100; i++) {
     const row = i % 7, col = Math.floor(i / 7) % 7;
     const horizontal = i % 2 === 0;
-    pedestrians.push({ x: horizontal ? 90 + col * 400 + rand(0, 220) : 200 + col * 400 + (i % 3 ? 61 : -61), y: horizontal ? 200 + row * 400 + (i % 3 ? 62 : -62) : 100 + row * 400 + rand(0, 220), angle: horizontal ? (i % 3 ? 0 : Math.PI) : Math.PI / 2, health: 60, flee: 0, hitFlash: 0, color: ['#dfc08d', '#e19c8b', '#8fb7ac', '#a696bc', '#ced5bd'][i % 5], pace: rand(19, 33), phase: rand(0, 8) });
+    pedestrians.push({ x: horizontal ? 90 + col * 400 + rand(0, 220) : 200 + col * 400 + (i % 3 ? 61 : -61), y: horizontal ? 200 + row * 400 + (i % 3 ? 62 : -62) : 100 + row * 400 + rand(0, 220), angle: horizontal ? (i % 3 ? 0 : Math.PI) : Math.PI / 2, health: 60, flee: 0, hitFlash: 0, color: ['#f0d08f', '#ef8e64', '#65aaa1', '#b4a0ce', '#f1e3ba'][i % 5], pace: rand(19, 33), phase: rand(0, 8) });
   }
-  supplyCrates = [{ x: 560, y: 1045, type: 'health', available: true }, { x: 1280, y: 1660, type: 'ammo', available: true }, { x: 2430, y: 1370, type: 'health', available: true }, { x: 1580, y: 2260, type: 'ammo', available: true }];
+  for (const ped of pedestrians) placePedestrianOnClearGround(ped);
+  supplyCrates = [{ x: 560, y: 1045, type: 'health', available: true }, { x: 1280, y: 1776, type: 'ammo', available: true }, { x: 2430, y: 1370, type: 'health', available: true }, { x: 1580, y: 2260, type: 'ammo', available: true }];
+}
+function placePedestrianOnClearGround(ped) {
+  if (!isBlocked(ped.x, ped.y, 7)) return;
+  for (const step of [16, 32, 64, 96, 128, 160]) {
+    for (const [dx, dy] of [[0, -step], [0, step], [-step, 0], [step, 0]]) {
+      if (!isBlocked(ped.x + dx, ped.y + dy, 7)) { ped.x += dx; ped.y += dy; ped.angle = Math.atan2(dy, dx); return; }
+    }
+  }
+  ped.x = 600; ped.y = 1020;
 }
 function updateTraffic(dt) {
   for (const car of cars) {
@@ -43,8 +54,8 @@ function hurtPedestrian(ped, damage, angle) {
   if (ped.health <= 0) return;
   ped.health -= damage; ped.hitFlash = .3; ped.flee = 8; ped.angle = angle;
   moveWithCollision(ped, Math.cos(angle) * 12, Math.sin(angle) * 12, 7);
-  addParticles(ped.x, ped.y, '#e5c39b', 6, 60); addWanted(2, 'CIVILIAN HIT');
-  if (ped.health <= 0) { game.stats.pedestriansDown++; addFloatingText(ped.x, ped.y, 'CIVILIAN DOWN', '#ff9075'); }
+  addParticles(ped.x, ped.y, '#edc58c', 6, 60); addWanted(2, 'CIVILIAN HIT');
+  if (ped.health <= 0) { game.stats.pedestriansDown++; addFloatingText(ped.x, ped.y, 'CIVILIAN DOWN', '#e96442'); }
   for (const other of pedestrians) if (distance(other, ped) < 230 && other.health > 0) { other.flee = 8; other.angle = Math.atan2(other.y - ped.y, other.x - ped.x); }
 }
 function updatePedestrians(dt) {
@@ -62,22 +73,23 @@ function updatePedestrians(dt) {
     }
   }
   for (const crate of supplyCrates) if (crate.available && distance(crate, player) < 28 && !player.car) {
-    crate.available = false;
+    crate.available = false; crate.respawn = 90;
     if (crate.type === 'health') { player.health = Math.min(100, player.health + 50); showToast('FIRST AID · +50 HEALTH'); }
     else { player.ammo += 30; showToast('PISTOL AMMO · +30 ROUNDS'); }
     playSound('pickup'); addParticles(crate.x, crate.y, '#9be0c2');
   }
+  for (const crate of supplyCrates) if (!crate.available) { crate.respawn = Math.max(0, (crate.respawn || 0) - dt); if (crate.respawn === 0) crate.available = true; }
 }
 function drawPedestrian(ctx, ped, time) {
   ctx.save(); ctx.translate(ped.x, ped.y); ctx.rotate(ped.angle);
   if (ped.health <= 0) {
-    ctx.globalAlpha = .65; drawCircle(ctx, 0, 0, 11, '#6a4d4d'); drawRect(ctx, -9, -3, 18, 6, ped.color); drawCircle(ctx, 11, 0, 3, '#d6b592'); ctx.restore(); return;
+    ctx.globalAlpha = .65; drawCircle(ctx, 0, 0, 11, '#9b7a5e'); drawRect(ctx, -9, -3, 18, 6, ped.color); drawCircle(ctx, 11, 0, 3, '#d6b592'); ctx.restore(); return;
   }
-  drawCircle(ctx, 4, 4, 7, '#07171e80');
+  drawCircle(ctx, 4, 4, 7, '#75604666');
   const stride = Math.sin(time * (ped.flee ? 18 : 7) + ped.phase) * 3;
-  drawRect(ctx, -7, -5 + stride, 6, 3, '#1b2d37'); drawRect(ctx, -7, 2 - stride, 6, 3, '#1b2d37');
+  drawRect(ctx, -7, -5 + stride, 6, 3, '#3e5b59'); drawRect(ctx, -7, 2 - stride, 6, 3, '#3e5b59');
   ctx.fillStyle = ped.hitFlash > 0 ? '#fff3cb' : ped.color; ctx.beginPath(); ctx.ellipse(0, 0, 5, 8, 0, 0, Math.PI * 2); ctx.fill();
-  drawCircle(ctx, 2, 0, 4, '#d8b599'); drawCircle(ctx, 1, -1, 3, '#493d3b'); ctx.restore();
+  drawCircle(ctx, 2, 0, 4, '#e0b183'); drawCircle(ctx, 1, -1, 3, '#69503a'); ctx.restore();
   if (ped.flee > 0) drawText(ctx, '!', ped.x, ped.y - 14, 11, '#f3ce83', 'center');
 }
 function drawSupplies(ctx, time) {

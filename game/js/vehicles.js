@@ -1,10 +1,11 @@
 'use strict';
+// Spawn original vehicles and simulate steering, skids, crashes and visible damage.
 const carDefinitions = {
-  Vulture: { name: 'Vulture', body: '#d69262', maxSpeed: 320, acceleration: 230, length: 49, width: 26 },
-  Manta: { name: 'Manta', body: '#68a6a5', maxSpeed: 365, acceleration: 260, length: 47, width: 25 },
-  Mule: { name: 'Mule', body: '#9ca182', maxSpeed: 245, acceleration: 170, length: 57, width: 29 },
-  Comet: { name: 'Comet', body: '#be829a', maxSpeed: 340, acceleration: 245, length: 45, width: 25 },
-  Patrol: { name: 'PSPD Interceptor', body: '#d4d9cb', maxSpeed: 335, acceleration: 230, length: 53, width: 27 }
+  Vulture: { name: 'Vulture', category: 'SEDAN', body: '#e59a56', maxSpeed: 320, acceleration: 230, length: 49, width: 26 },
+  Manta: { name: 'Manta', category: 'COUPE', body: '#49aaa2', maxSpeed: 365, acceleration: 260, length: 47, width: 25 },
+  Brine: { name: 'Brine', category: 'VAN', body: '#aab577', maxSpeed: 245, acceleration: 170, length: 57, width: 29 },
+  Sundrift: { name: 'Sundrift', category: 'COUPE', body: '#e2a58e', maxSpeed: 340, acceleration: 245, length: 45, width: 25 },
+  Patrol: { name: 'PSPD Interceptor', category: 'PATROL CAR', body: '#fff0d2', maxSpeed: 335, acceleration: 230, length: 53, width: 27 }
 };
 let cars = [], skidMarks = [], particles = [], floatingTexts = [], carSerial = 0;
 function spawnCar(type, x, y, angle = 0, ai = 'parked') {
@@ -14,7 +15,7 @@ function spawnCar(type, x, y, angle = 0, ai = 'parked') {
 }
 function spawnVehicles() {
   cars = []; carSerial = 0; skidMarks = []; particles = []; floatingTexts = [];
-  const types = ['Vulture', 'Manta', 'Mule', 'Comet'];
+  const types = ['Vulture', 'Manta', 'Brine', 'Sundrift'];
   for (let i = 0; i < 38; i++) {
     const ix = i % 7, iy = Math.floor(i / 7) % 6;
     spawnCar(types[i % 4], 318 + ix * 400, 247 + iy * 400, i % 2 ? 0 : Math.PI, 'parked');
@@ -23,7 +24,7 @@ function spawnVehicles() {
     if (i % 2) spawnCar(types[i % 4], 200 + (i % 7) * 400 - 24, 350 + (i % 6) * 400, Math.PI / 2, 'traffic');
     else spawnCar(types[i % 4], 350 + (i % 6) * 400, 200 + (i % 7) * 400 + 24, 0, 'traffic');
   }
-  spawnCar('Vulture', 704, 1648, 0, 'parked').missionCar = true;
+  spawnCar('Vulture', 704, 1776, 0, 'parked').missionCar = true;
   spawnCar('Manta', 637, 1018, 0, 'parked');
 }
 function addParticles(x, y, color, count = 10, force = 110) {
@@ -89,14 +90,14 @@ function updateVehicles(dt) {
     }
     if (car.health < 32) {
       car.smokeTimer -= dt;
-      if (car.smokeTimer < 0) { car.smokeTimer = .12; particles.push({ x: car.x + Math.cos(car.angle) * 17, y: car.y + Math.sin(car.angle) * 17, vx: rand(-6, 6), vy: -18, life: 1.7, maxLife: 1.7, color: '#a1a8a5', size: 7, smoke: true }); }
+      if (car.smokeTimer < 0) { car.smokeTimer = .12; particles.push({ x: car.x + Math.cos(car.angle) * 17, y: car.y + Math.sin(car.angle) * 17, vx: rand(-6, 6), vy: -18, life: 1.7, maxLife: 1.7, color: '#bcb3a1', size: 7, smoke: true }); }
     }
   }
   // Car contacts separate both bodies, transfer momentum and damage the striking car.
   for (let i = 0; i < cars.length; i++) for (let j = i + 1; j < cars.length; j++) {
     const a = cars[i], b = cars[j], d = distance(a, b);
     if (d > 39 || (!a.speed && !b.speed)) continue;
-    const nx = (a.x - b.x) / (d || 1), ny = (a.y - b.y) / (d || 1), impact = Math.hypot(a.vx - b.vx, a.vy - b.vy);
+    const nx = d > .01 ? (a.x - b.x) / d : Math.cos(a.angle), ny = d > .01 ? (a.y - b.y) / d : Math.sin(a.angle), impact = Math.hypot(a.vx - b.vx, a.vy - b.vy);
     moveWithCollision(a, nx * (39 - d) * .5, ny * (39 - d) * .5, 21);
     moveWithCollision(b, -nx * (39 - d) * .5, -ny * (39 - d) * .5, 21);
     a.vx *= .5; a.vy *= .5; b.vx *= .55; b.vy *= .55;
@@ -121,36 +122,38 @@ function updateEffects(dt) {
 function drawCar(ctx, car, time, darkness) {
   ctx.save(); ctx.translate(car.x, car.y); ctx.rotate(car.angle);
   const l = car.length, w = car.width;
-  drawRect(ctx, -l / 2 + 4, -w / 2 + 5, l + 2, w + 3, '#06151c88');
-  for (const x of [-l * .28, l * .28]) for (const y of [-w / 2 - 2, w / 2 - 3]) drawRect(ctx, x - 5, y, 11, 5, '#0b171d');
+  drawRect(ctx, -l / 2 + 4, -w / 2 + 5, l + 2, w + 3, '#65523f70');
+  for (const x of [-l * .28, l * .28]) for (const y of [-w / 2 - 2, w / 2 - 3]) drawRect(ctx, x - 5, y, 11, 5, '#263b3c');
   if (darkness > .16 && car.health > 0) {
     const g = ctx.createLinearGradient(l / 2, 0, l / 2 + 160, 0); g.addColorStop(0, '#ffe5ad36'); g.addColorStop(1, '#ffe5ad00');
     ctx.fillStyle = g;
     for (const side of [-8, 8]) { ctx.beginPath(); ctx.moveTo(l / 2, side); ctx.lineTo(l / 2 + 170, side - 42); ctx.lineTo(l / 2 + 170, side + 42); ctx.closePath(); ctx.fill(); }
   }
-  ctx.fillStyle = car.health === 0 ? '#34363a' : car.body; ctx.beginPath(); ctx.roundRect(-l / 2, -w / 2, l, w, 5); ctx.fill();
+  ctx.fillStyle = car.health === 0 ? '#655b4e' : car.body; ctx.beginPath(); ctx.roundRect(-l / 2, -w / 2, l, w, 5); ctx.fill();
   drawLine(ctx, -l / 2 + 6, -w / 2 + 2, l / 2 - 5, -w / 2 + 2, '#ffffff55', 2);
-  drawRect(ctx, -l * .28, -w / 2 + 3, l * .44, w - 6, '#243843');
+  drawRect(ctx, -l * .28, -w / 2 + 3, l * .44, w - 6, '#2b616b');
   drawRect(ctx, -l * .18, -w / 2 + 4, l * .28, w - 8, car.type === 'Patrol' ? '#17252e' : car.body);
-  drawLine(ctx, l * .15, -w / 2 + 4, l * .15, w / 2 - 4, '#afd8d399', 2);
-  drawRect(ctx, -l / 2 + 1, -w / 2 + 3, 3, 5, '#ff7155'); drawRect(ctx, -l / 2 + 1, w / 2 - 8, 3, 5, '#ff7155');
-  drawRect(ctx, l / 2 - 2, -w / 2 + 3, 3, 5, '#fff0bb'); drawRect(ctx, l / 2 - 2, w / 2 - 8, 3, 5, '#fff0bb');
-  drawLine(ctx, l / 2 - 2, -w / 2 + 8, l / 2 - 2, w / 2 - 8, '#14262b', 2);
+  drawLine(ctx, l * .15, -w / 2 + 4, l * .15, w / 2 - 4, '#e0f0dccc', 2);
+  drawRect(ctx, -l / 2 + 1, -w / 2 + 3, 3, 5, '#ed563f'); drawRect(ctx, -l / 2 + 1, w / 2 - 8, 3, 5, '#ed563f');
+  drawRect(ctx, l / 2 - 2, -w / 2 + 3, 3, 5, '#fff7d7'); drawRect(ctx, l / 2 - 2, w / 2 - 8, 3, 5, '#fff7d7');
+  drawLine(ctx, l / 2 - 2, -w / 2 + 8, l / 2 - 2, w / 2 - 8, '#405c59', 2);
   if (car.type === 'Patrol') {
     drawRect(ctx, -4, -w / 2 + 1, 5, w - 2, '#17252e');
-    ctx.save(); ctx.shadowBlur = 20;
-    const flash = Math.sin(time * 11 + car.id) > 0;
-    ctx.shadowColor = flash ? '#ff525d' : '#5197ff'; drawRect(ctx, -4, -10, 6, 8, flash ? '#ff616b' : '#672e43');
-    ctx.shadowColor = flash ? '#5197ff' : '#ff525d'; drawRect(ctx, -4, 2, 6, 8, flash ? '#37598d' : '#65acff'); ctx.restore();
-    if (car.health > 0) {
-      ctx.globalAlpha = .16; drawCircle(ctx, 0, -18, 24, flash ? '#ff6265' : '#64a2ff'); ctx.globalAlpha = 1;
+    if (car.siren && car.ai === 'police') {
+      ctx.save(); ctx.shadowBlur = 20;
+      const flash = Math.sin(time * 11 + car.id) > 0;
+      ctx.shadowColor = flash ? '#ff525d' : '#5197ff'; drawRect(ctx, -4, -10, 6, 8, flash ? '#ff616b' : '#672e43');
+      ctx.shadowColor = flash ? '#5197ff' : '#ff525d'; drawRect(ctx, -4, 2, 6, 8, flash ? '#37598d' : '#65acff'); ctx.restore();
+      if (car.health > 0) {
+        ctx.globalAlpha = .16; drawCircle(ctx, 0, -18, 24, flash ? '#ff6265' : '#64a2ff'); ctx.globalAlpha = 1;
+      }
     }
     drawText(ctx, 'PS', 15, 3, 7, '#24343d', 'center');
   }
   if (car.health < 65) { drawLine(ctx, 9, -8, 20, 8, '#202c35', 2); drawLine(ctx, 4, 5, 18, 1, '#202c35'); }
   ctx.restore();
   if (car === player.car) {
-    ctx.save(); ctx.strokeStyle = '#8fdbc280'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(car.x, car.y, 35, -.2, .8); ctx.stroke(); ctx.restore();
-    drawText(ctx, 'YOU', car.x, car.y - 38, 8, '#9de2c6', 'center');
+    ctx.save(); ctx.strokeStyle = '#0e635cab'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(car.x, car.y, 35, -.2, .8); ctx.stroke(); ctx.restore();
+    drawText(ctx, 'YOU', car.x, car.y - 38, 8, '#e0fff3', 'center');
   }
 }

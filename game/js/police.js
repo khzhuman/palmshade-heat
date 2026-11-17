@@ -1,4 +1,5 @@
 'use strict';
+// Respond to reported crimes with road-routed pursuit, searches, arrests and resprays.
 const wanted = { level: 0, top: 0, lastCrime: -100, unseen: 0, bust: 0, spawnTimer: 0, seen: false, reason: '', forced: false };
 function addWanted(stars, reason = 'CRIME REPORTED') {
   const previous = wanted.level;
@@ -10,7 +11,7 @@ function addWanted(stars, reason = 'CRIME REPORTED') {
   if (wanted.level > previous) { showToast(reason + ' · ' + wanted.level + ' STAR HEAT'); playSound('siren'); }
 }
 function clearWanted() {
-  wanted.level = 0; wanted.unseen = 0; wanted.bust = 0; wanted.seen = false; wanted.forced = false;
+  wanted.level = 0; wanted.unseen = 0; wanted.bust = 0; wanted.seen = false; wanted.forced = false; wanted.spawnTimer = 1.5;
   for (const car of cars) if (car.type === 'Patrol') { car.ai = 'traffic'; car.siren = false; }
 }
 function nearestRoadPoint(point) {
@@ -93,13 +94,15 @@ function updatePolice(dt) {
   updateShineShop(dt);
 }
 function updateShineShop(dt) {
+  game.shopCooldown = Math.max(0, game.shopCooldown - dt);
   if (player.car && distance(player, shineShop) < shineShop.radius && Math.abs(player.car.speed) < 85) {
     if (game.shopCooldown > 0) return;
+    if (mission.active && mission.index === 2 && mission.stage === 0) { showToast('MARA NEEDS THE DIVERSION · KEEP THE POLICE BUSY'); game.shopCooldown = 4; return; }
+    if (mission.active && mission.index === 3 && mission.stage < 4 && wanted.forced) { showToast('HOT METAL · FINISH MARA’S DROPS BEFORE THE RESPRAY'); game.shopCooldown = 4; return; }
     if (game.cash >= 500 && (wanted.level || player.car.health < 100)) {
       game.cash -= 500; clearWanted(); player.car.health = 100;
-      player.car.body = ['#86b7aa', '#b189be', '#e1ad73'][Math.floor(random() * 3)];
-      addParticles(player.x, player.y, '#c6a6e3', 30); playSound('pickup'); showToast('SHINE SHOP · NEW PAINT, NO HEAT · −$500'); game.shopCooldown = 4; saveGame();
+      player.car.body = ['#65b6a4', '#caa5d5', '#f0bf76'][Math.floor(random() * 3)];
+      addParticles(player.x, player.y, '#edcaff', 30); playSound('pickup'); showToast('SHINE SHOP · NEW PAINT, NO HEAT · −$500'); game.shopCooldown = 4; saveGame();
     } else if (game.cash < 500 && wanted.level) { showToast('SHINE SHOP · $500 REQUIRED'); game.shopCooldown = 4; }
   }
-  game.shopCooldown = Math.max(0, game.shopCooldown - dt);
 }
