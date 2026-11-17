@@ -261,18 +261,28 @@ function stageScreenshot(mode) {
   const pursuitA = spawnCar('Patrol', 820, 1424, -.08, 'police'); pursuitA.speed = 220;
   const pursuitB = spawnCar('Patrol', 1000, 1260, Math.PI / 2 + .13, 'police'); pursuitB.speed = 190;
   if (mode === 'hero') {
-    camera.x = hero.x; camera.y = hero.y - 64; camera.zoom = 1.2;
-    pursuitB.x = hero.x + 180; pursuitB.y = hero.y; pursuitB.angle = Math.PI + .08;
+    // Approach the Shine Shop past a busy crossing, with both patrols following east.
+    Object.assign(hero, { x: 2190, y: 1824, angle: 0, body: '#8fdbc2', vx: 238, vy: 0 });
+    player.x = hero.x; player.y = hero.y; player.angle = hero.angle;
+    camera.x = 2160; camera.y = 1750; camera.zoom = 1.56; // 1.3x the previous cover zoom.
+    for (const [car, gap] of [[pursuitA, 130], [pursuitB, 260]]) {
+      Object.assign(car, { x: hero.x - gap, y: hero.y, angle: hero.angle, vx: car.speed, vy: 0 });
+    }
+    const pursuit = [hero, pursuitA, pursuitB];
+    cars = cars.filter(car => pursuit.includes(car) || pursuit.every(staged => distance(car, staged) >= 80));
+    for (let i = 0; i < 5; i++) pedestrians.push({ x: 2259, y: 1764 + i * 16, angle: Math.PI / 2, health: 60, flee: 0, hitFlash: 0, color: ['#f5dfb1', '#55b5aa', '#ec7958', '#a79cd1'][i % 4], pace: 25, phase: i });
   }
   spawnCar('Vulture', 1190, 1376, Math.PI, 'traffic'); spawnCar('Brine', 980, 1540, -Math.PI / 2, 'traffic');
   for (let i = 0; i < 18; i++) pedestrians.push({ x: 650 + (i % 9) * 74, y: i < 9 ? 1337 : 1462, angle: i % 2 ? 0 : Math.PI, health: 60, flee: i % 4 === 0 ? 4 : 0, hitFlash: 0, color: ['#f5dfb1', '#55b5aa', '#ec7958', '#a79cd1'][i % 4], pace: 25, phase: i });
-  for (let i = 0; i < 45; i++) skidMarks.push({ x1: 775 + i * 5, y1: 1431 + Math.sin(i * .09) * 12, x2: 780 + i * 5, y2: 1431 + Math.sin((i + 1) * .09) * 12, life: 18 });
+  const skidX = mode === 'hero' ? hero.x - 225 : 775, skidY = mode === 'hero' ? hero.y + 7 : 1431;
+  for (let i = 0; i < 45; i++) skidMarks.push({ x1: skidX + i * 5, y1: skidY + Math.sin(i * .09) * 12, x2: skidX + 5 + i * 5, y2: skidY + Math.sin((i + 1) * .09) * 12, life: 18 });
   if (mode === 'foot') {
     cars = cars.filter(c => c.ai !== 'police' && c !== hero); clearWanted();
     player.car = null; player.x = 659; player.y = 1776; player.angle = -.08; player.health = 100; player.weapon = 'fists';
     camera.x = 830; camera.y = 1748; camera.zoom = 1.55;
-    const parked = cars.find(c => c.missionCar); parked.x = 704; parked.y = 1776; parked.stolen = false;
-    const target = spawnCar('Vulture', 1060, 1776, 0); mission.index = 1; mission.stage = 0; mission.targetCarId = target.id;
+    const target = cars.find(c => c.missionCar);
+    Object.assign(target, { x: 704, y: 1776, angle: 0, body: carDefinitions.Vulture.body, stolen: false });
+    mission.index = 1; mission.stage = 0; mission.targetCarId = target.id;
     game.stats.missions = 1; game.cash = 2750;
     for (let i = 0; i < 12; i++) pedestrians.push({ x: 570 + i * 57, y: i % 2 ? 1758 : 1860, angle: i % 2 ? 0 : Math.PI, health: 60, flee: 0, hitFlash: 0, color: ['#e87959', '#f3dd8c', '#559b96'][i % 3], pace: 25, phase: i });
   } else if (mode === 'complete') {

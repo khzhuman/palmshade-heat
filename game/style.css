@@ -13,7 +13,9 @@
 .card{max-height:94dvh;overflow:auto}
 .scrim{background:#243c4399;backdrop-filter:blur(2px)}
 .map-layout canvas{width:100%;height:100%;object-fit:contain}
-.map-shell{background:#183238f5}
+.map-shell{background:#183238}
+/* The pause map covers the world and HUD, including the margin outside its panel. */
+#overlay:has(.map-shell){background:#10202a}
 .radar{border-color:#f4dfb480}
 .objective-panel strong{line-height:1.4}
 .complete-card{padding:28px 40px}
@@ -25,6 +27,14 @@
 .shot-mode .bar i{transition:none}
 .shot-mode .radar{width:302px}
 .shot-mode #minimap{width:300px;height:225px}
-.shot-mode .objective-panel{right:362px}
+.shot-mode .objective-panel{right:362px;background:linear-gradient(90deg,#0b1a24fc,#0b1a24f2)}
+/* Give the staged full-city map the panel's height; its heading and legend sit beside it. */
+.shot-mode .map-shell{inset:16px;padding:18px;display:grid;grid-template-columns:minmax(0,1fr) 300px;grid-template-rows:auto 1fr auto;gap:18px 24px}
+.shot-mode .map-top{grid-column:2;grid-row:1;flex-direction:column;align-items:flex-start;gap:14px}
+.shot-mode .map-top h1{line-height:1.2}
+.shot-mode .map-layout{display:contents}
+.shot-mode .map-layout canvas{grid-column:1;grid-row:1/4;min-height:0}
+.shot-mode .map-aside{grid-column:2;grid-row:2;width:auto;min-height:0}
+.shot-mode .map-footer{grid-column:2;grid-row:3;flex-direction:column;gap:12px;line-height:1.8;padding-top:0}
 @media(max-height:650px){.title-screen{padding-top:28px}.title-logo{font-size:72px;margin:17px 0}.tagline{font-size:13px;margin-bottom:15px}.title-features{margin-top:17px;gap:6px}.title-controls{margin-top:15px;padding-top:12px;gap:8px}.title-footer{position:static;margin-top:25px}.complete-card{padding:22px 35px}.complete-card .seal{margin-bottom:12px}.complete-card h1{font-size:36px}.stats{margin:18px 0;padding:12px 0}}
 @media(max-width:800px){.title-features{font-size:9px;max-width:390px}.location{padding:8px 10px}.map-shell{inset:12px;padding:12px}.map-top h1{font-size:18px}.map-layout{gap:10px}.map-aside{width:160px;flex-shrink:0}.map-job{font-size:10px}.map-footer{font-size:7px}.title-footer{font-size:7px;letter-spacing:1px}}

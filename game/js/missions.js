@@ -33,9 +33,15 @@ function startMission() {
   game.mode = 'playing'; overlay.innerHTML = ''; showToast('JOB STARTED · ' + def.name.toUpperCase()); saveGame();
 }
 function currentMissionMarker() {
-  if (game.shot === 'hero') return { x: 2200, y: 1688, label: 'SHINE SHOP', distance: 1140 };
+  if (game.shot === 'hero') return { x: 2200, y: 1688, label: 'SHINE SHOP' };
   if (!mission.active || mission.index >= 5) return null;
-  if (mission.index === 1 && mission.stage === 0) { const car = cars.find(c => c.id === mission.targetCarId); return car ? { x: car.x, y: car.y, label: 'VULTURE / TARGET' } : null; }
+  if (mission.index === 1 && mission.stage === 0) {
+    const car = cars.find(c => c.id === mission.targetCarId); if (!car) return null;
+    const marker = { x: car.x, y: car.y, label: 'VULTURE / TARGET' };
+    // The staged player stands 2 m behind the body of this 4.9 m sedan (10 units / m).
+    if (game.shot === 'foot') marker.distance = Math.max(0, distance(player, car) - car.length / 2) / 10;
+    return marker;
+  }
   const point = missionDefinitions[mission.index].checkpoints[mission.stage];
   if (!point) return null;
   const labels = [['DOCK 07 / PACKAGE', 'SOUTH QUAY / DELIVERY'], ['VULTURE / TARGET', 'CANNERY GARAGE'], [], ['CANNERY / HOT METAL', 'MARINA ROW / DROP', 'SUNSET MILE / DROP', 'HILLCREST / DROP', 'SHINE SHOP'], ['HILLCREST VAULT', 'DOCK 09 / ESCAPE']];

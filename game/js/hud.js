@@ -36,7 +36,7 @@ function updateHUD() {
   setHUDText('objective', missionObjective());
   setHUDText('mission-label', mission.active ? 'MARA VOSS / STORY JOB 0' + (mission.index + 1) + ' / ' + missionDefinitions[mission.index].name.toUpperCase() : 'MARA VOSS / ' + game.stats.missions + ' OF 5 JOBS COMPLETE');
   const marker = currentMissionMarker();
-  setHUDText('mission-detail', marker ? marker.label + ' · ' + Math.round(distance(player, marker)) + ' m · Follow the gold diamond' : mission.active ? 'Police respond to crimes. Break their line of sight; the Shine Shop clears heat for $500.' : mission.index < 5 ? 'ENTER — Answer Mara’s next call · M — Full city map' : 'Steal a car, explore four districts, make your own trouble.');
+  setHUDText('mission-detail', marker ? marker.label + ' · ' + Math.round(marker.distance ?? distance(player, marker)) + ' m · Follow the gold diamond' : mission.active ? 'Police respond to crimes. Break their line of sight; the Shine Shop clears heat for $500.' : mission.index < 5 ? 'ENTER — Answer Mara’s next call · M — Full city map' : 'Steal a car, explore four districts, make your own trouble.');
   setHUDText('mission-timer', mission.active && (mission.index === 0 || (mission.index === 2 && mission.stage === 0)) ? formatTime(mission.timer) : '');
   drawMinimap();
   if (game.mode === 'map') drawWorldMap();
