@@ -1,8 +1,9 @@
 'use strict';
+// Move and aim the player, steal vehicles, fight on foot and trace pistol shots.
 const player = { x: 600, y: 1020, angle: 0, health: 100, ammo: 48, weapon: 'fists', car: null, cooldown: 0, flash: 0, punch: 0, hitTimer: 0 };
 let bullets = [], nearestCar = null;
 function resetPlayer() {
-  Object.assign(player, { x: 600, y: 1020, angle: 0, health: 100, ammo: 48, weapon: 'fists', car: null, cooldown: 0, flash: 0, punch: 0, hitTimer: 0 }); bullets = [];
+  Object.assign(player, { x: 600, y: 1020, angle: 0, health: 100, ammo: 48, weapon: 'fists', car: null, cooldown: 0, flash: 0, punch: 0, hitTimer: 0 }); bullets = []; nearestCar = null;
 }
 function findNearestCar() {
   let best = null, d = 72;
@@ -25,7 +26,7 @@ function enterOrExitCar() {
   if (!car) return;
   if (!car.stolen) {
     addWanted(car.type === 'Patrol' ? 3 : 1, 'VEHICLE STOLEN'); car.stolen = true; game.stats.carsStolen++;
-    if (car.ai === 'traffic') pedestrians.push({ x: car.x + 32, y: car.y + 35, angle: 1.2, health: 60, flee: 9, color: '#d4ba8d', pace: 30, phase: 0, hitFlash: 0 });
+    if (car.ai === 'traffic') pedestrians.push({ x: car.x + 32, y: car.y + 35, angle: 1.2, health: 60, flee: 9, color: '#f0d09a', pace: 30, phase: 0, hitFlash: 0 });
   }
   car.ai = 'player'; car.siren = false; player.car = car; player.x = car.x; player.y = car.y; player.angle = car.angle; playSound('blip');
 }
@@ -34,7 +35,7 @@ function punch() {
   player.weapon = 'fists'; player.cooldown = .4; player.punch = .2; playSound('punch');
   let hit = false;
   for (const ped of pedestrians) if (ped.health > 0 && distance(ped, player) < 50 && Math.abs(angleDifference(Math.atan2(ped.y - player.y, ped.x - player.x), player.angle)) < 1.3) { hurtPedestrian(ped, 35, player.angle); hit = true; break; }
-  if (!hit) for (const car of cars) if (distance(car, player) < 54) { damageCar(car, 3, 'player'); addParticles(car.x, car.y, '#f5ce95', 6); addWanted(car.type === 'Patrol' ? 3 : 1, 'PROPERTY DAMAGE'); break; }
+  if (!hit) for (const car of cars) if (distance(car, player) < 54) { damageCar(car, 3, 'player'); addParticles(car.x, car.y, '#f5d7a2', 6); addWanted(car.type === 'Patrol' ? 3 : 1, 'PROPERTY DAMAGE'); break; }
 }
 function shootPistol() {
   if (player.car || player.cooldown > 0) return;
@@ -91,15 +92,15 @@ function updateBullets(dt) {
 function drawPlayer(ctx, time) {
   if (player.car) return;
   ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle);
-  drawCircle(ctx, 4, 5, 9, '#07172199');
+  drawCircle(ctx, 4, 5, 9, '#745d3d77');
   const moving = keyDown('w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'), stride = moving ? Math.sin(time * 13) * 4 : 0;
-  drawRect(ctx, -8, -7 + stride, 8, 5, '#172e3d'); drawRect(ctx, -8, 3 - stride, 8, 5, '#172e3d');
-  ctx.fillStyle = player.hitTimer > 0 ? '#ffe0a2' : '#edbc82'; ctx.beginPath(); ctx.ellipse(0, 0, 7, 10, 0, 0, Math.PI * 2); ctx.fill();
-  drawLine(ctx, -3, -6, -3, 6, '#905b49', 3); drawCircle(ctx, 2, 0, 5, '#c89570'); drawCircle(ctx, 0, -1, 4, '#2d3438');
-  if (player.weapon === 'pistol') { drawRect(ctx, 7, 4, 10, 3, '#bfd0c7'); drawRect(ctx, 8, 4, 3, 6, '#263b40'); }
-  if (player.punch > 0) { drawCircle(ctx, 18, -4, 4, '#d4a179'); drawLine(ctx, 5, -6, 16, -4, '#edbc82', 5); }
+  drawRect(ctx, -8, -7 + stride, 8, 5, '#365e63'); drawRect(ctx, -8, 3 - stride, 8, 5, '#365e63');
+  ctx.fillStyle = player.hitTimer > 0 ? '#ffe0a2' : '#f5c86d'; ctx.beginPath(); ctx.ellipse(0, 0, 7, 10, 0, 0, Math.PI * 2); ctx.fill();
+  drawLine(ctx, -3, -6, -3, 6, '#ba7552', 3); drawCircle(ctx, 2, 0, 5, '#dba275'); drawCircle(ctx, 0, -1, 4, '#624b32');
+  if (player.weapon === 'pistol') { drawRect(ctx, 7, 4, 10, 3, '#f7e6c6'); drawRect(ctx, 8, 4, 3, 6, '#486364'); }
+  if (player.punch > 0) { drawCircle(ctx, 18, -4, 4, '#e3b27e'); drawLine(ctx, 5, -6, 16, -4, '#f5c86d', 5); }
   if (player.flash > 0) { ctx.save(); ctx.shadowColor = '#ffd679'; ctx.shadowBlur = 25; drawCircle(ctx, 21, 5, 8, '#ffce79'); drawCircle(ctx, 21, 5, 4, '#fff2bb'); ctx.restore(); }
   ctx.restore();
-  ctx.strokeStyle = '#9cdec2'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(player.x, player.y, 17, 0, Math.PI * 2); ctx.stroke();
-  drawText(ctx, 'YOU', player.x, player.y - 26, 8, '#9de2c6', 'center');
+  ctx.strokeStyle = '#165f5b'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(player.x, player.y, 17, 0, Math.PI * 2); ctx.stroke();
+  drawText(ctx, 'YOU', player.x, player.y - 26, 8, '#f1fff3', 'center');
 }

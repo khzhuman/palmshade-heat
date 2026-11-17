@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101e27">
+  <meta name="theme-color" content="#e5bf83">
   <title>PALMSHADE HEAT</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="world" aria-label="Palmshade Heat — top-down open-world crime game"></canvas>
+  <canvas id="world" tabindex="0" aria-label="Palmshade Heat — drive, walk and explore a sun-soaked original city"></canvas>
   <div id="vignette"></div>
   <div id="hud" hidden>
     <header class="topbar">
       <div class="brand"><span class="brand-mark">P<span>H</span></span><div>PALMSHADE <b>HEAT</b><small>THE CITY NEVER COOLS DOWN.</small></div></div>
       <div class="wanted-block"><div id="wanted" aria-label="Wanted level">☆☆☆☆☆</div><small id="heat-status">OFF THE RADAR</small></div>
       <div class="wallet"><small>CASH</small><strong id="cash">$0</strong></div>
-      <div class="clock"><strong id="clock">19:42</strong><small id="clock-label">DUSK / DAY 01</small></div>
+      <div class="clock"><strong id="clock">17:25</strong><small id="clock-label">GOLDEN HOUR / DAY 01</small></div>
     </header>
-    <div class="location"><span class="live-dot"></span><span id="district">NEON MILE</span><small id="street">CINDER AVENUE</small></div>
-    <div class="vitals"><div class="health-row"><span>＋</span><div class="bar"><i id="health-bar"></i></div><b id="health-value">100</b></div><div id="weapon">FISTS <span>J / CLICK</span></div><div id="car-status"></div></div>
+    <div class="location"><span class="live-dot"></span><span id="district">SUNSET MILE</span><small id="street">CINDER AVENUE</small></div>
+    <div class="vitals"><div class="health-row"><span>＋</span><div class="bar" role="progressbar" aria-label="Health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="health-bar"></i></div><b id="health-value">100</b></div><div id="weapon">FISTS <span>J / CLICK</span></div><div id="car-status"></div></div>
     <div id="bust" hidden><span>BUSTED</span><div class="bar"><i id="bust-bar"></i></div></div>
     <div id="prompt" hidden></div>
     <div id="toast" hidden></div>
