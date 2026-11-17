@@ -99,6 +99,7 @@ function drawShineShopIcon(ctx, p, size = 7) {
 }
 function drawMinimap() {
   const ctx = minimapContext, width = 240, height = 180, scale = .205;
+  ctx.save(); ctx.scale(minimapCanvas.width / width, minimapCanvas.height / height);
   const view = { x: player.x - width / (2 * scale), y: player.y - height / (2 * scale), scale, width, height };
   drawMapTerrain(ctx, view);
   for (const car of cars) {
@@ -116,6 +117,7 @@ function drawMinimap() {
   cars.filter(c => c.ai === 'police' && c.health > 0).forEach((car, i) => drawPoliceBlip(ctx, mapPosition(car, view), i));
   drawMapPlayer(ctx, { x: width / 2, y: height / 2 });
   ctx.strokeStyle = '#d5d2b755'; ctx.lineWidth = 1; ctx.strokeRect(.5, .5, width - 1, height - 1);
+  ctx.restore();
 }
 function showWorldMap() {
   game.mode = 'map'; resetInput();
