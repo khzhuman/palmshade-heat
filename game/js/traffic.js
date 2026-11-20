@@ -52,24 +52,34 @@ function updateTraffic(dt) {
 }
 function hurtPedestrian(ped, damage, angle) {
   if (ped.health <= 0) return;
-  ped.health -= damage; ped.hitFlash = .3; ped.flee = 8; ped.angle = angle;
+  ped.health -= damage; ped.hitFlash = .3; ped.crouch = 0; ped.flee = 8; ped.angle = angle;
   moveWithCollision(ped, Math.cos(angle) * 12, Math.sin(angle) * 12, 7);
   addParticles(ped.x, ped.y, '#edc58c', 6, 60); addWanted(ped.officer ? 3 : 2, ped.officer ? 'OFFICER HIT' : 'CIVILIAN HIT');
   if (ped.health <= 0 && !ped.officer) { game.stats.pedestriansDown++; addFloatingText(ped.x, ped.y, 'CIVILIAN DOWN', '#e96442'); }
-  for (const other of pedestrians) if (distance(other, ped) < 230 && other.health > 0) { other.flee = 8; other.angle = Math.atan2(other.y - ped.y, other.x - ped.x); }
+  for (const other of pedestrians) if (distance(other, ped) < 230 && other.health > 0 && !(other.crouch > 0)) { other.flee = 8; other.angle = Math.atan2(other.y - ped.y, other.x - ped.x); }
 }
 function fleeFrom(ped, threat) {
   ped.flee = 4;
   ped.angle = Math.atan2(ped.y - threat.y, ped.x - threat.x);
 }
 function scatterPedestrians(threat, radius) {
-  for (const ped of pedestrians) if (!ped.officer && ped.health > 0 && distance(ped, threat) < radius) fleeFrom(ped, threat);
+  for (const ped of pedestrians) {
+    if (ped.officer || ped.health <= 0 || distance(ped, threat) >= radius) continue;
+    if (ped.crouch > 0 || random() < 1 / 3) {
+      ped.crouch = 2;
+      ped.flee = 0;
+    } else fleeFrom(ped, threat);
+  }
 }
 function updatePedestrians(dt) {
   const fastCars = cars.filter(c => c.health > 0 && (Math.abs(c.speed) > 108 || (Math.abs(c.speed) > 55 && !city.roadsX.some(x => Math.abs(c.x - x) < 52) && !city.roadsY.some(y => Math.abs(c.y - y) < 52))));
   for (const ped of pedestrians) {
     ped.hitFlash = Math.max(0, ped.hitFlash - dt);
     if (ped.health <= 0) continue;
+    if (ped.crouch > 0) {
+      ped.crouch = Math.max(0, ped.crouch - dt);
+      if (ped.crouch > 0) continue;
+    }
     ped.flee = Math.max(0, ped.flee - dt);
     if (!ped.officer) {
       const playerGap = player.car && Math.abs(player.car.speed) > 108 ? distance(ped, player.car) : Infinity;
@@ -101,6 +111,16 @@ function drawPedestrian(ctx, ped, time) {
     ctx.globalAlpha = .65; drawCircle(ctx, 0, 0, 11, '#9b7a5e'); drawRect(ctx, -9, -3, 18, 6, ped.color); drawCircle(ctx, 11, 0, 3, '#d6b592'); ctx.restore(); return;
   }
   drawCircle(ctx, 4, 4, 7, '#75604666');
+  if (ped.crouch > 0) {
+    ctx.fillStyle = ped.color;
+    ctx.beginPath(); ctx.ellipse(0, 0, 4, 10, 0, 0, Math.PI * 2); ctx.fill();
+    drawCircle(ctx, 2, 0, 4, '#69503a');
+    for (const side of [-1, 1]) {
+      drawLine(ctx, -2, side * 5, 4, side * 8, ped.color, 3);
+      drawLine(ctx, 4, side * 8, 3, side, '#e0b183', 3);
+    }
+    ctx.restore(); return;
+  }
   const stride = Math.sin(time * (ped.flee ? 18 : 7) + ped.phase) * 3;
   drawRect(ctx, -7, -5 + stride, 6, 3, '#3e5b59'); drawRect(ctx, -7, 2 - stride, 6, 3, '#3e5b59');
   ctx.fillStyle = ped.hitFlash > 0 ? '#fff3cb' : ped.color; ctx.beginPath(); ctx.ellipse(0, 0, 5, 8, 0, 0, Math.PI * 2); ctx.fill();

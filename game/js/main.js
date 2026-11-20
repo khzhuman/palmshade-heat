@@ -316,13 +316,16 @@ function stageScreenshot(mode) {
     Object.assign(target, { x: 704, y: 1776, angle: 0, body: carDefinitions.Vulture.body, stolen: false });
     mission.index = 1; startMission();
     game.stats.missions = 1; game.cash = 2750;
-    for (let i = 0; i < 12; i++) pedestrians.push({ x: 570 + i * 57, y: i % 2 ? 1758 : 1860, angle: i % 2 ? 0 : Math.PI, health: 60, flee: 0, hitFlash: 0, color: ['#e87959', '#f3dd8c', '#559b96'][i % 3], pace: 25, phase: i });
+    const footCrowd = Array.from({ length: 12 }, (_, i) => ({ x: 570 + i * 57, y: i % 2 ? 1758 : 1860, angle: i % 2 ? 0 : Math.PI, health: 60, flee: 0, hitFlash: 0, color: ['#e87959', '#f3dd8c', '#559b96'][i % 3], pace: 25, phase: i }));
     cars = cars.filter(c => c === target || distance(c, player) > 190);
     const officer = registerUnit({ x: 782, y: 1821, angle: Math.PI, officer: true, health: 60, hitFlash: 0, flee: 0, color: '#354c66', pace: 0, phase: 0 }, 'FIRING');
     pedestrians = pedestrians.filter(p => p.y < 1780 || p.y > 1840 || distance(p, player) > 165);
     pedestrians.push(officer);
     player.angle = Math.atan2(officer.y - player.y, officer.x - player.x);
     shootPistol(); updateBullets(.13);
+    for (const i of [1, 3]) Object.assign(footCrowd[i], { crouch: 2, angle: Math.PI / 2 });
+    for (const i of [2, 4]) fleeFrom(footCrowd[i], player);
+    pedestrians.push(...footCrowd);
   } else if (mode === 'complete') {
     clearWanted(); game.cash = 8300; mission.index = 3; mission.active = false; player.health = 100;
     showCompletionCard(2);
