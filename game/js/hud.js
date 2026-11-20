@@ -19,7 +19,7 @@ function updateHUD() {
   setHUDText('clock-label', (hour >= 16 && hour < 19 ? 'GOLDEN HOUR' : hour >= 7 && hour < 19 ? 'SUNLIGHT' : 'AFTER DARK') + ' / DAY ' + String(1 + Math.floor(clockMinutes() / 1440)).padStart(2, '0'));
   setHUDText('district', districtAt(player.x, player.y).name.toUpperCase());
   setHUDText('street', streetAt(player.x, player.y));
-  setHUDText('weapon', player.weapon === 'pistol' ? 'PISTOL · ' + player.ammo + ' ROUNDS [K]' : 'FISTS · J / CLICK');
+  updateStreetPanels();
   const car = player.car;
   setHUDText('car-status', car ? car.name.toUpperCase() + ' · ' + Math.round(Math.abs(car.speed) * .24) + ' MPH · BODY ' + Math.ceil(car.health) + '%' : 'ON FOOT · SHIFT TO SPRINT');
   hudNodes.bust.hidden = wanted.bust <= .01;
@@ -45,6 +45,28 @@ function updateHUD() {
 const hudNodes = Object.fromEntries(['cash', 'health-bar', 'health-value', 'wanted', 'heat-status', 'clock', 'clock-label', 'district', 'street', 'weapon', 'car-status', 'bust', 'bust-bar', 'prompt', 'toast', 'objective', 'mission-label', 'mission-detail', 'mission-timer'].map(id => [id, document.getElementById(id)]));
 const minimapCanvas = document.getElementById('minimap');
 const minimapContext = minimapCanvas.getContext('2d');
+const weaponStrip = hudNodes.weapon;
+weaponStrip.innerHTML = '<b data-slot="fists">FISTS</b><b data-slot="pistol">PISTOL <i></i></b><b data-jobs></b>';
+const [fistsSlot, pistolSlot, jobsChip] = weaponStrip.children;
+const ammoCount = pistolSlot.firstElementChild;
+const dispatchPanel = document.getElementById('dispatch');
+const dispatchList = dispatchPanel.querySelector('ul');
+const maraCard = document.getElementById('mara-dialogue');
+const maraLine = maraCard.querySelector('p');
+let lastDispatch = '';
+function updateStreetPanels() {
+  fistsSlot.classList.toggle('selected', player.weapon === 'fists');
+  pistolSlot.classList.toggle('selected', player.weapon === 'pistol');
+  if (ammoCount.textContent !== String(player.ammo)) ammoCount.textContent = player.ammo;
+  const jobs = 'JOBS ' + game.stats.missions + '/5';
+  if (jobsChip.textContent !== jobs) jobsChip.textContent = jobs;
+  const units = dispatchUnits();
+  dispatchPanel.hidden = !units.length || game.mode !== 'playing';
+  const rows = units.map(u => `<li><b>${u.callsign}</b><span>${u.tactic}</span><i>${Math.round(distance(u, player) / 10)} m</i></li>`).join('');
+  if (rows !== lastDispatch) { dispatchList.innerHTML = rows; lastDispatch = rows; }
+  maraCard.hidden = game.mode !== 'playing' || !mission.dialogue || game.time >= mission.dialogueUntil;
+  if (!maraCard.hidden && maraLine.textContent !== mission.dialogue) maraLine.textContent = mission.dialogue;
+}
 
 function setHUDText(id, value) {
   const text = String(value);

@@ -1,8 +1,9 @@
 'use strict';
 // Move and aim the player, steal vehicles, fight on foot and trace pistol shots.
 const player = { x: 600, y: 1020, angle: 0, health: 100, ammo: 48, weapon: 'fists', car: null, cooldown: 0, flash: 0, punch: 0, hitTimer: 0 };
-let bullets = [], nearestCar = null;
+let bullets = [], nearestCar = null, pistolImpact = null;
 function resetPlayer() {
+  pistolImpact = null;
   Object.assign(player, { x: 600, y: 1020, angle: 0, health: 100, ammo: 48, weapon: 'fists', car: null, cooldown: 0, flash: 0, punch: 0, hitTimer: 0 }); bullets = []; nearestCar = null;
 }
 function findNearestCar() {
@@ -43,7 +44,10 @@ function shootPistol() {
   if (player.ammo <= 0) { player.cooldown = .4; showToast('OUT OF AMMO · LOOK FOR GOLD AMMO CRATES'); playSound('blip'); return; }
   player.ammo--; player.cooldown = .23; player.flash = .075; game.stats.shotsFired++;
   const a = player.angle;
-  bullets.push({ x: player.x + Math.cos(a) * 17, y: player.y + Math.sin(a) * 17, vx: Math.cos(a) * 900, vy: Math.sin(a) * 900, life: .9 });
+  const x = player.x + Math.cos(a) * 21, y = player.y + Math.sin(a) * 21;
+  bullets.push({ x, y, fromX: x, fromY: y, vx: Math.cos(a) * 900, vy: Math.sin(a) * 900, life: .9 });
+  scatterPedestrians(player, 240);
+  announceEvent(player, 'SHOTS FIRED');
   addWanted(2, 'SHOTS FIRED'); playSound('gun');
 }
 function updatePlayer(dt) {
@@ -75,19 +79,38 @@ function updatePlayer(dt) {
   updateBullets(dt);
 }
 function updateBullets(dt) {
+  if (pistolImpact && (pistolImpact.life -= dt) <= 0) pistolImpact = null;
   for (const bullet of bullets) {
     const steps = Math.ceil(900 * dt / 10);
     for (let s = 0; s < steps && bullet.life > 0; s++) {
       bullet.x += bullet.vx * dt / steps; bullet.y += bullet.vy * dt / steps;
-      if (isBlocked(bullet.x, bullet.y, 2)) { bullet.life = 0; addParticles(bullet.x, bullet.y, '#ffdc98', 7); break; }
+      if (isBlocked(bullet.x, bullet.y, 2)) { pistolHit(bullet); break; }
       const ped = pedestrians.find(p => p.health > 0 && distance(p, bullet) < 10);
-      if (ped) { hurtPedestrian(ped, 65, Math.atan2(bullet.vy, bullet.vx)); bullet.life = 0; break; }
+      if (ped) { hurtPedestrian(ped, ped.officer ? 34 : 65, Math.atan2(bullet.vy, bullet.vx)); pistolHit(bullet, ped, ped.officer ? 34 : 65); break; }
       const car = cars.find(c => c.health > 0 && distance(c, bullet) < 22);
-      if (car) { damageCar(car, 11, 'player'); addParticles(bullet.x, bullet.y, '#ffe0a1', 8); bullet.life = 0; break; }
+      if (car) { damageCar(car, 11, 'player'); pistolHit(bullet, car, 11); break; }
     }
     bullet.life -= dt;
   }
   bullets = bullets.filter(b => b.life > 0);
+}
+function pistolHit(bullet, target, damage) {
+  bullet.life = 0;
+  pistolImpact = { ...bullet, life: .14 };
+  addParticles(bullet.x, bullet.y, '#ffe0a1', 9, 105);
+  if (target) addFloatingText(target.x + 19, target.y - 38, '-' + damage, '#fff0b0');
+}
+function drawPistolImpact(ctx) {
+  if (!pistolImpact) return;
+  const { fromX, fromY, x, y, life } = pistolImpact;
+  ctx.save(); ctx.globalAlpha = clamp(life / .14, 0, 1);
+  drawLine(ctx, fromX, fromY, x, y, '#ffbc5b99', 5);
+  drawLine(ctx, fromX, fromY, x, y, '#fff2b6', 1.5);
+  for (let i = 0; i < 7; i++) {
+    const a = i * 2.4, r = 7 + i % 3 * 4;
+    drawLine(ctx, x, y, x + Math.cos(a) * r, y + Math.sin(a) * r, '#ffe0a1', 1.6);
+  }
+  drawCircle(ctx, x, y, 3, '#fff9d2'); ctx.restore();
 }
 function drawPlayer(ctx, time) {
   if (player.car) return;
@@ -97,9 +120,9 @@ function drawPlayer(ctx, time) {
   drawRect(ctx, -8, -7 + stride, 8, 5, '#365e63'); drawRect(ctx, -8, 3 - stride, 8, 5, '#365e63');
   ctx.fillStyle = player.hitTimer > 0 ? '#ffe0a2' : '#f5c86d'; ctx.beginPath(); ctx.ellipse(0, 0, 7, 10, 0, 0, Math.PI * 2); ctx.fill();
   drawLine(ctx, -3, -6, -3, 6, '#ba7552', 3); drawCircle(ctx, 2, 0, 5, '#dba275'); drawCircle(ctx, 0, -1, 4, '#624b32');
-  if (player.weapon === 'pistol') { drawRect(ctx, 7, 4, 10, 3, '#f7e6c6'); drawRect(ctx, 8, 4, 3, 6, '#486364'); }
+  if (player.weapon === 'pistol') { drawLine(ctx, 3, 5, 12, 0, '#dba275', 4); drawRect(ctx, 12, -2, 8, 4, '#354855'); drawRect(ctx, 15, -2, 5, 1, '#f7e6c6'); }
   if (player.punch > 0) { drawCircle(ctx, 18, -4, 4, '#e3b27e'); drawLine(ctx, 5, -6, 16, -4, '#f5c86d', 5); }
-  if (player.flash > 0) { ctx.save(); ctx.shadowColor = '#ffd679'; ctx.shadowBlur = 25; drawCircle(ctx, 21, 5, 8, '#ffce79'); drawCircle(ctx, 21, 5, 4, '#fff2bb'); ctx.restore(); }
+  if (player.flash > 0) { ctx.save(); ctx.shadowColor = '#ffd679'; ctx.shadowBlur = 20; drawLine(ctx, 20, 0, 34, 0, '#ffca70', 4); drawLine(ctx, 22, -6, 22, 6, '#ffca70', 2); drawCircle(ctx, 23, 0, 4, '#fff2bb'); ctx.restore(); }
   ctx.restore();
   ctx.strokeStyle = '#165f5b'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(player.x, player.y, 17, 0, Math.PI * 2); ctx.stroke();
   drawText(ctx, 'YOU', player.x, player.y - 26, 8, '#f1fff3', 'center');

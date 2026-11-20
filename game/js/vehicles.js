@@ -24,6 +24,10 @@ function spawnVehicles() {
     if (i % 2) spawnCar(types[i % 4], 200 + (i % 7) * 400 - 24, 350 + (i % 6) * 400, Math.PI / 2, 'traffic');
     else spawnCar(types[i % 4], 350 + (i % 6) * 400, 200 + (i % 7) * 400 + 24, 0, 'traffic');
   }
+  if (game.shot) for (let i = 0; i < 21; i++) {
+    const x = 200 + i % 7 * 400, y = 200 + Math.floor(i / 7) * 800;
+    spawnCar(types[i % 4], x + 98, y - 23, Math.PI + (i % 3 - 1) * .13, 'traffic').speed = 105;
+  }
   spawnCar('Vulture', 704, 1776, 0, 'parked').missionCar = true;
   spawnCar('Manta', 637, 1018, 0, 'parked');
 }
@@ -34,6 +38,9 @@ function addParticles(x, y, color, count = 10, force = 110) {
   }
 }
 function addFloatingText(x, y, text, color = '#f9ca74') { floatingTexts.push({ x, y, text, color, life: 2.8 }); }
+function announceEvent(point, label) {
+  if (!floatingTexts.some(t => t.text === label && t.life > 1.8)) addFloatingText(point.x, point.y - 53, label);
+}
 function damageCar(car, amount, source) {
   if (car.health <= 0) return;
   car.health = Math.max(0, car.health - amount);
@@ -88,9 +95,9 @@ function updateVehicles(dt) {
       player.x = car.x; player.y = car.y; player.angle = car.angle;
       if (Math.abs(car.speed) > 15 && game.time - game.lastEngine > .14) { playSound('engine', Math.abs(car.speed)); game.lastEngine = game.time; }
     }
-    if (car.health < 32) {
+    if (car.health < 38) {
       car.smokeTimer -= dt;
-      if (car.smokeTimer < 0) { car.smokeTimer = .12; particles.push({ x: car.x + Math.cos(car.angle) * 17, y: car.y + Math.sin(car.angle) * 17, vx: rand(-6, 6), vy: -18, life: 1.7, maxLife: 1.7, color: '#bcb3a1', size: 7, smoke: true }); }
+      if (car.smokeTimer < 0) { car.smokeTimer = .14; particles.push({ x: car.x + Math.cos(car.angle) * 17, y: car.y + Math.sin(car.angle) * 17, vx: rand(-18, 2) - car.vx * .11, vy: -24 - car.vy * .1, life: 1.7, maxLife: 1.7, color: '#877f73', size: 7, smoke: true }); }
     }
   }
   // Car contacts separate both bodies, transfer momentum and damage the striking car.
@@ -122,6 +129,14 @@ function updateEffects(dt) {
 function drawCar(ctx, car, time, darkness) {
   ctx.save(); ctx.translate(car.x, car.y); ctx.rotate(car.angle);
   const l = car.length, w = car.width;
+  if (car === player.car && Math.abs(car.speed) > 175) {
+    ctx.globalAlpha = clamp((Math.abs(car.speed) - 175) / 140, 0, .8);
+    for (let i = 0; i < 8; i++) {
+      const x = -31 - ((i * 17 + time * 230) % 96), y = (i % 2 ? 1 : -1) * (15 + i * 2);
+      drawLine(ctx, x, y, x - 14 - i * 2, y, '#f8dfaaab', 1.5);
+    }
+    ctx.globalAlpha = 1;
+  }
   drawRect(ctx, -l / 2 + 4, -w / 2 + 5, l + 2, w + 3, '#65523f70');
   for (const x of [-l * .28, l * .28]) for (const y of [-w / 2 - 2, w / 2 - 3]) drawRect(ctx, x - 5, y, 11, 5, '#263b3c');
   if (darkness > .16 && car.health > 0) {
@@ -145,7 +160,12 @@ function drawCar(ctx, car, time, darkness) {
       ctx.shadowColor = flash ? '#ff525d' : '#5197ff'; drawRect(ctx, -4, -10, 6, 8, flash ? '#ff616b' : '#672e43');
       ctx.shadowColor = flash ? '#5197ff' : '#ff525d'; drawRect(ctx, -4, 2, 6, 8, flash ? '#37598d' : '#65acff'); ctx.restore();
       if (car.health > 0) {
-        ctx.globalAlpha = .16; drawCircle(ctx, 0, -18, 24, flash ? '#ff6265' : '#64a2ff'); ctx.globalAlpha = 1;
+        for (const [side, color] of [[-1, '#ff3654'], [1, '#458dff']]) {
+          const y = side * 12, hot = flash === (side < 0), radius = hot ? 49 : 31;
+          const halo = ctx.createRadialGradient(0, y, 2, 0, y, radius);
+          halo.addColorStop(0, color + (hot ? 'b3' : '70')); halo.addColorStop(1, color + '00');
+          drawCircle(ctx, 0, y, radius, halo);
+        }
       }
     }
     drawText(ctx, 'PS', 15, 3, 7, '#24343d', 'center');

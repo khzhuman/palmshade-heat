@@ -30,6 +30,7 @@ let audioContext = null, masterGain = null;
 function initializeWorld() {
   if (!city.surface) buildCity();
   spawnVehicles(); spawnPedestrians(); resetPlayer(); resetMissions(); resetInput();
+  resetDispatch();
   Object.assign(wanted, { level: 0, top: 0, lastCrime: -100, unseen: 0, bust: 0, spawnTimer: 0, seen: false, reason: '', forced: false });
   game.toast = ''; game.toastUntil = 0; game.shopCooldown = 0; game.saveTimer = 0;
   game.lastEngine = -1; game.lastSiren = -4; game.lastFrame = 0;
@@ -215,6 +216,7 @@ function drawWorld() {
   ctx.fillStyle = '#e5bf83'; ctx.fillRect(0, 0, game.width, game.height);
   ctx.save(); ctx.translate(game.width / 2, game.height / 2); ctx.scale(camera.zoom, camera.zoom); ctx.translate(-camera.x, -camera.y);
   ctx.drawImage(city.surface, 0, 0);
+  drawAirSupport(ctx, time, true);
   for (const mark of skidMarks) drawLine(ctx, mark.x1, mark.y1, mark.x2, mark.y2, '#302e285e', 3);
   drawSupplies(ctx, time);
   for (const car of cars) drawCar(ctx, car, time, darkness);
@@ -222,6 +224,9 @@ function drawWorld() {
   if (game.mode !== 'title') drawPlayer(ctx, time);
   for (const bullet of bullets) drawLine(ctx, bullet.x, bullet.y, bullet.x - bullet.vx * .015, bullet.y - bullet.vy * .015, '#fff3bf', 2);
   for (const tree of city.trees) drawTree(ctx, tree, time);
+  drawAirSupport(ctx, time, false);
+  drawPistolImpact(ctx);
+  for (const car of cars) if (car.ai === 'police' && car.fireUntil > game.time && !player.car) drawLine(ctx, car.x, car.y, player.x, player.y, '#ffac7388', 1);
   for (const p of particles) { ctx.globalAlpha = clamp(p.life / p.maxLife, 0, 1); drawCircle(ctx, p.x, p.y, p.size, p.color); } ctx.globalAlpha = 1;
   if (darkness > .08) for (const lamp of city.lamps) {
     const g = ctx.createRadialGradient(lamp.x, lamp.y, 2, lamp.x, lamp.y, 65); g.addColorStop(0, '#ffe5a653'); g.addColorStop(1, '#ffe5a600'); drawCircle(ctx, lamp.x, lamp.y, 65, g);
@@ -250,6 +255,7 @@ function stageScreenshot(mode) {
   // Freeze simulation and sun, so every screenshot is a reproducible render of real game objects.
   const shopApproach = mode === 'hero' || mode === 'map';
   document.body.classList.add('shot-mode');
+  document.body.dataset.shot = mode;
   minimapCanvas.width = 300; minimapCanvas.height = 225;
   game.time = 42; game.renderTime = 23.4; game.mode = 'playing'; game.cash = 12450;
   game.stats.missions = 3; game.stats.topWanted = 4; game.stats.carsStolen = 6; game.stats.shotsFired = 28; game.stats.playTime = 746;
@@ -259,8 +265,8 @@ function stageScreenshot(mode) {
   player.car = hero; player.x = hero.x; player.y = hero.y; player.angle = hero.angle; player.health = 86; player.weapon = 'pistol'; player.ammo = 31;
   camera.x = 1080; camera.y = 1405; camera.zoom = 1.35;
   wanted.level = 3; wanted.seen = true; wanted.lastCrime = game.time; wanted.top = 4;
-  const pursuitA = spawnCar('Patrol', 820, 1424, -.08, 'police'); pursuitA.speed = 220;
-  const pursuitB = spawnCar('Patrol', 1000, 1260, Math.PI / 2 + .13, 'police'); pursuitB.speed = 190;
+  const pursuitA = registerUnit(spawnCar('Patrol', 820, 1424, -.08, 'police')); pursuitA.speed = 220;
+  const pursuitB = registerUnit(spawnCar('Patrol', 1000, 1260, Math.PI / 2 + .13, 'police')); pursuitB.speed = 190;
   if (shopApproach) {
     // Approach the Shine Shop past a busy crossing, with both patrols following east.
     Object.assign(hero, { x: 2190, y: 1824, angle: 0, body: '#8fdbc2', vx: 238, vy: 0 });
@@ -279,15 +285,44 @@ function stageScreenshot(mode) {
   for (let i = 0; i < 18; i++) pedestrians.push({ x: 650 + (i % 9) * 74, y: i < 9 ? 1337 : 1462, angle: i % 2 ? 0 : Math.PI, health: 60, flee: i % 4 === 0 ? 4 : 0, hitFlash: 0, color: ['#f5dfb1', '#55b5aa', '#ec7958', '#a79cd1'][i % 4], pace: 25, phase: i });
   const skidX = shopApproach ? hero.x - 225 : 775, skidY = shopApproach ? hero.y + 7 : 1431;
   for (let i = 0; i < 45; i++) skidMarks.push({ x1: skidX + i * 5, y1: skidY + Math.sin(i * .09) * 12, x2: skidX + 5 + i * 5, y2: skidY + Math.sin((i + 1) * .09) * 12, life: 18 });
+  if (mode === 'hero') {
+    Object.assign(hero, { x: 2130, y: 1824, angle: -.15, speed: 292, vx: 289, vy: -43, health: 53 });
+    Object.assign(player, { x: hero.x, y: hero.y, angle: hero.angle });
+    Object.assign(camera, { x: 2190, y: 1778, zoom: 1.38 });
+    Object.assign(wanted, { level: 4, bust: .57 });
+    Object.assign(pursuitA, { x: 2010, y: 1834, angle: -.22, tactic: 'RAMMING' });
+    Object.assign(pursuitB, { x: 1910, y: 1780, angle: .28, health: 27 });
+    cars = cars.filter(c => c === hero || c.ai === 'police' || (distance(c, hero) > 80 && distance(c, { x: 2420, y: 1800 }) > 100));
+    deployRoadblock(2420, 1800, false);
+    updateAirSupport(0);
+    Object.assign(helicopter, { x: 2038, y: 1665, angle: Math.atan2(159, 92) });
+    for (const [type, x, y, angle] of [['Vulture', 2255, 1780, -.55], ['Brine', 2328, 1831, .36], ['Sundrift', 2190, 1910, -1.25]]) {
+      Object.assign(spawnCar(type, x, y, angle, 'traffic'), { speed: 142, vx: Math.cos(angle) * 142, vy: Math.sin(angle) * 142 });
+    }
+    for (const ped of pedestrians) if (distance(ped, hero) < 220) { ped.flee = 4; ped.angle = Math.atan2(ped.y - hero.y, ped.x - hero.x); }
+    skidMarks = [];
+    for (const offset of [-10, 10]) for (let i = 0; i < 26; i++) {
+      const x = 1977 + i * 5, bend = j => 1834 + offset + Math.sin(j * .11) * 9;
+      skidMarks.push({ x1: x, y1: bend(i), x2: x + 5, y2: bend(i + 1), life: 18 });
+    }
+    for (let i = 0; i < 21; i++) particles.push({ x: hero.x - 25 - i * 4, y: hero.y + Math.sin(i * 2) * (9 + i), life: .8, maxLife: 1.5, size: 2 + i % 6, color: '#f3ca91' });
+    for (let i = 0; i < 7; i++) particles.push({ x: pursuitB.x + 15 - i * 4, y: pursuitB.y - i * 5, life: .9, maxLife: 1.7, size: 5 + i, color: '#8f8274' });
+  }
   if (mode === 'foot') {
     cars = cars.filter(c => c.ai !== 'police' && c !== hero); clearWanted();
-    player.car = null; player.x = 659; player.y = 1776; player.angle = -.08; player.health = 100; player.weapon = 'fists';
-    camera.x = 830; camera.y = 1748; camera.zoom = 1.55;
+    Object.assign(player, { car: null, x: 659, y: 1795, health: 68, weapon: 'pistol' });
+    Object.assign(camera, { x: 732, y: 1775, zoom: 1.66 });
     const target = cars.find(c => c.missionCar);
     Object.assign(target, { x: 704, y: 1776, angle: 0, body: carDefinitions.Vulture.body, stolen: false });
-    mission.index = 1; mission.stage = 0; mission.targetCarId = target.id;
+    mission.index = 1; startMission();
     game.stats.missions = 1; game.cash = 2750;
     for (let i = 0; i < 12; i++) pedestrians.push({ x: 570 + i * 57, y: i % 2 ? 1758 : 1860, angle: i % 2 ? 0 : Math.PI, health: 60, flee: 0, hitFlash: 0, color: ['#e87959', '#f3dd8c', '#559b96'][i % 3], pace: 25, phase: i });
+    cars = cars.filter(c => c === target || distance(c, player) > 190);
+    const officer = registerUnit({ x: 782, y: 1821, angle: Math.PI, officer: true, health: 60, hitFlash: 0, flee: 0, color: '#354c66', pace: 0, phase: 0 }, 'FIRING');
+    pedestrians = pedestrians.filter(p => p.y < 1780 || p.y > 1840 || distance(p, player) > 165);
+    pedestrians.push(officer);
+    player.angle = Math.atan2(officer.y - player.y, officer.x - player.x);
+    shootPistol(); updateBullets(.13);
   } else if (mode === 'complete') {
     clearWanted(); game.cash = 8300; mission.index = 3; mission.active = false; player.health = 100;
     showCompletionCard(2);

@@ -8,7 +8,8 @@ const missionDefinitions = [
   { name: 'The Palmshade Score', reward: 10000, intro: 'Hillcrest’s vault house holds the port ledger and our payday. Go in on foot. Take it. I’ll be at Dock 09. Don’t bring the whole city to my boat.', objective: 'Take the score at Hillcrest. Escape 5-star heat to the Marina boat.', beat: '“Palmshade can keep its skyline. We’re taking the sunrise.”', checkpoints: [{ x: 2200, y: 2434 }, { x: 2790, y: 980 }] }
 ];
 const mission = { index: 0, stage: 0, active: false, timer: 0, elapsed: 0, targetCarId: null, failed: false };
-function resetMissions() { Object.assign(mission, { index: 0, stage: 0, active: false, timer: 0, elapsed: 0, targetCarId: null, failed: false }); }
+function resetMissions() { Object.assign(mission, { index: 0, stage: 0, active: false, timer: 0, elapsed: 0, targetCarId: null, failed: false, dialogue: '', dialogueUntil: 0 }); }
+function maraSays(line) { mission.dialogue = line; mission.dialogueUntil = game.time + 9; }
 function showMissionIntro() {
   if (mission.index >= 5) { showEnding(); return; }
   game.mode = 'card';
@@ -30,7 +31,7 @@ function startMission() {
     if (!player.car) { const car = spawnCar('Manta', player.x + 45, player.y, 0); if (isBlocked(car.x, car.y, 22)) { car.x = 1000; car.y = 1424; } player.car = car; car.ai = 'player'; car.stolen = true; player.x = car.x; player.y = car.y; }
     addWanted(3, 'MARA’S DIVERSION'); wanted.forced = true;
   }
-  game.mode = 'playing'; overlay.innerHTML = ''; showToast('JOB STARTED · ' + def.name.toUpperCase()); saveGame();
+  game.mode = 'playing'; overlay.innerHTML = ''; showToast('JOB STARTED · ' + def.name.toUpperCase()); maraSays(def.intro); saveGame();
 }
 function currentMissionMarker() {
   if (game.shot === 'hero' || game.shot === 'map') {
@@ -61,6 +62,12 @@ function missionObjective() {
   return mission.stage === 0 ? 'Reach the Hillcrest vault house · take the score on foot' : wanted.level ? 'Escape 5-star heat · lose police, reach the Marina boat' : 'Meet Mara at Dock 09 · leave Palmshade behind';
 }
 function updateMissions(dt) {
+  const previous = missionObjective();
+  const index = mission.index;
+  advanceMission(dt);
+  if (mission.active && mission.index === index && missionObjective() !== previous) maraSays(missionObjective());
+}
+function advanceMission(dt) {
   if (!mission.active || game.mode !== 'playing') return;
   mission.elapsed += dt;
   if (mission.index === 0) {

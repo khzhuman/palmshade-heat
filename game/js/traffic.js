@@ -3,7 +3,7 @@
 let pedestrians = [], supplyCrates = [];
 function spawnPedestrians() {
   pedestrians = [];
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < (game.shot ? 168 : 100); i++) {
     const row = i % 7, col = Math.floor(i / 7) % 7;
     const horizontal = i % 2 === 0;
     pedestrians.push({ x: horizontal ? 90 + col * 400 + rand(0, 220) : 200 + col * 400 + (i % 3 ? 61 : -61), y: horizontal ? 200 + row * 400 + (i % 3 ? 62 : -62) : 100 + row * 400 + rand(0, 220), angle: horizontal ? (i % 3 ? 0 : Math.PI) : Math.PI / 2, health: 60, flee: 0, hitFlash: 0, color: ['#f0d08f', '#ef8e64', '#65aaa1', '#b4a0ce', '#f1e3ba'][i % 5], pace: rand(19, 33), phase: rand(0, 8) });
@@ -54,15 +54,30 @@ function hurtPedestrian(ped, damage, angle) {
   if (ped.health <= 0) return;
   ped.health -= damage; ped.hitFlash = .3; ped.flee = 8; ped.angle = angle;
   moveWithCollision(ped, Math.cos(angle) * 12, Math.sin(angle) * 12, 7);
-  addParticles(ped.x, ped.y, '#edc58c', 6, 60); addWanted(2, 'CIVILIAN HIT');
-  if (ped.health <= 0) { game.stats.pedestriansDown++; addFloatingText(ped.x, ped.y, 'CIVILIAN DOWN', '#e96442'); }
+  addParticles(ped.x, ped.y, '#edc58c', 6, 60); addWanted(ped.officer ? 3 : 2, ped.officer ? 'OFFICER HIT' : 'CIVILIAN HIT');
+  if (ped.health <= 0 && !ped.officer) { game.stats.pedestriansDown++; addFloatingText(ped.x, ped.y, 'CIVILIAN DOWN', '#e96442'); }
   for (const other of pedestrians) if (distance(other, ped) < 230 && other.health > 0) { other.flee = 8; other.angle = Math.atan2(other.y - ped.y, other.x - ped.x); }
 }
+function fleeFrom(ped, threat) {
+  ped.flee = 4;
+  ped.angle = Math.atan2(ped.y - threat.y, ped.x - threat.x);
+}
+function scatterPedestrians(threat, radius) {
+  for (const ped of pedestrians) if (!ped.officer && ped.health > 0 && distance(ped, threat) < radius) fleeFrom(ped, threat);
+}
 function updatePedestrians(dt) {
+  const fastCars = cars.filter(c => c.health > 0 && (Math.abs(c.speed) > 108 || (Math.abs(c.speed) > 55 && !city.roadsX.some(x => Math.abs(c.x - x) < 52) && !city.roadsY.some(y => Math.abs(c.y - y) < 52))));
   for (const ped of pedestrians) {
     ped.hitFlash = Math.max(0, ped.hitFlash - dt);
     if (ped.health <= 0) continue;
     ped.flee = Math.max(0, ped.flee - dt);
+    if (!ped.officer) {
+      const playerGap = player.car && Math.abs(player.car.speed) > 108 ? distance(ped, player.car) : Infinity;
+      if (playerGap >= 27 && playerGap < 53 && !ped.nearMiss) announceEvent(ped, 'NEAR MISS');
+      ped.nearMiss = playerGap < 53;
+      const threat = !ped.flee && fastCars.find(c => distance(ped, c) < 88);
+      if (threat) fleeFrom(ped, threat);
+    }
     if (wanted.level > 0 && distance(ped, player) < 130 && ped.flee <= 0) { ped.flee = 5; ped.angle = Math.atan2(ped.y - player.y, ped.x - player.x); }
     const speed = ped.flee > 0 ? 110 : ped.pace;
     if (moveWithCollision(ped, Math.cos(ped.angle) * speed * dt, Math.sin(ped.angle) * speed * dt, 7)) ped.angle += Math.PI * .65;
@@ -89,8 +104,16 @@ function drawPedestrian(ctx, ped, time) {
   const stride = Math.sin(time * (ped.flee ? 18 : 7) + ped.phase) * 3;
   drawRect(ctx, -7, -5 + stride, 6, 3, '#3e5b59'); drawRect(ctx, -7, 2 - stride, 6, 3, '#3e5b59');
   ctx.fillStyle = ped.hitFlash > 0 ? '#fff3cb' : ped.color; ctx.beginPath(); ctx.ellipse(0, 0, 5, 8, 0, 0, Math.PI * 2); ctx.fill();
+  if (ped.flee > 0 && !ped.officer) for (const side of [-1, 1]) {
+    drawLine(ctx, 0, side * 5, 6, side * (10 + stride), ped.color, 3);
+    drawCircle(ctx, 7, side * (10 + stride), 2, '#e0b183');
+  }
   drawCircle(ctx, 2, 0, 4, '#e0b183'); drawCircle(ctx, 1, -1, 3, '#69503a'); ctx.restore();
-  if (ped.flee > 0) drawText(ctx, '!', ped.x, ped.y - 14, 11, '#f3ce83', 'center');
+  if (ped.flee > 0 && !ped.officer) drawText(ctx, '!', ped.x, ped.y - 14, 11, '#f3ce83', 'center');
+  if (ped.officer || ped.hitFlash > 0) {
+    drawRect(ctx, ped.x - 19, ped.y - 25, 38, 6, '#10202a');
+    drawRect(ctx, ped.x - 18, ped.y - 24, 36 * clamp(ped.health / 60, 0, 1), 4, '#ff745e');
+  }
 }
 function drawSupplies(ctx, time) {
   for (const crate of supplyCrates) if (crate.available) {
